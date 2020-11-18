@@ -68,5 +68,3 @@ def uploadFileS3(filePath):
 files = getListOfFiles(DIR_PATH)
 uploadFiles(files)
 print("--- %s seconds ---" % (time.time() - start_time))
-
-
