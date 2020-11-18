@@ -1,7 +1,12 @@
 import os
 import boto3
+import asyncio
+import time
 from boto3.s3.transfer import TransferConfig
+import nest_asyncio
+nest_asyncio.apply()
 
+start_time = time.time()
 S3_BUCKET = ""
 DIR_PATH = r""
 ACCESS_ID = "" 
@@ -38,20 +43,22 @@ def getListOfFiles(dirName):
                 
     return allFiles
 
-def uploadFiles(files, rootFolder, DIR_PATH):
+async def uploadFiles(files, rootFolder, DIR_PATH):
+    concurrentUploads = []
     for file in files:
-        uploadFileS3(file, rootFolder, DIR_PATH)
+        concurrentUploads.append(uploadFileS3(file, rootFolder, DIR_PATH))
+    await asyncio.gather(*concurrentUploads)
 
 '''
     Documentation:
         https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html
 '''
 
-def uploadFileS3(filePath, rootFolder, DIR_PATH):
+async def uploadFileS3(filePath, rootFolder, DIR_PATH):
     objectKey = rootFolder + filePath[len(filePath) - (len(filePath)-len(DIR_PATH)):].replace('\\', '/')
-
     s3_client.upload_file(filePath, S3_BUCKET, objectKey)
 
     
 files = getListOfFiles(DIR_PATH)
+print("--- %s seconds ---" % (time.time() - start_time))
 uploadFiles(files, rootFolder, DIR_PATH)
