@@ -1,14 +1,19 @@
 import os
 import boto3
 import time
+import threading
 from boto3.s3.transfer import TransferConfig
-from multiprocessing.pool import ThreadPool
 
 start_time = time.time()
 S3_BUCKET = ""
 DIR_PATH = r""
 ACCESS_ID = "" 
 ACCESS_KEY=""
+maxThreads = 100
+sema = threading.Semaphore(value=maxThreads)
+
+config = TransferConfig(use_threads=False)
+
 s3_client = boto3.client('s3',
    aws_access_key_id=ACCESS_ID,
    aws_secret_access_key= ACCESS_KEY)
@@ -42,8 +47,11 @@ def getListOfFiles(dirName):
     return allFiles
 
 def uploadFiles(files):
-    pool = ThreadPool(processes=10)
-    pool.map(uploadFileS3, files)
+    threads = list()
+    for file in files:
+        thread = threading.Thread(target = uploadFileS3, args=(file,))
+        threads.append(thread)
+        thread.start()
 
 '''
     Documentation:
@@ -51,8 +59,10 @@ def uploadFiles(files):
 '''
 
 def uploadFileS3(filePath):
+    sema.acquire()
     objectKey = rootFolder + filePath[len(filePath) - (len(filePath)-len(DIR_PATH)):].replace('\\', '/')
-    s3_client.upload_file(filePath, S3_BUCKET, objectKey)
+    s3_client.upload_file(filePath, S3_BUCKET, objectKey, Config = config)
+    sema.release()
 
     
 files = getListOfFiles(DIR_PATH)
